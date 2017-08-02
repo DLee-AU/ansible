@@ -142,7 +142,8 @@ class LinodeInventory(object):
             if len(self.inventory) == 0:
                 data_to_print = self.get_inventory_from_cache()
             else:
-                data_to_print = self.json_format_dict(self.inventory, True)
+                data_to_print = self.json_format_dict(self.inventory,
+                        self.args.pretty)
 
         print(data_to_print)
 
@@ -177,6 +178,8 @@ class LinodeInventory(object):
                             help='Get all the variables about a specific node')
         parser.add_argument('--refresh-cache', action='store_true', default=False,
                             help='Force refresh of cache by making API requests to Linode (default: False - use cache files)')
+        parser.add_argument('--pretty', action='store_true', default=False,
+                            help='Pretty print output')
         self.args = parser.parse_args()
 
     def do_api_calls_update_cache(self):
@@ -251,7 +254,7 @@ class LinodeInventory(object):
             self.do_api_calls_update_cache()
             if self.args.host not in self.index:
                 # host might not exist anymore
-                return self.json_format_dict({}, True)
+                return self.json_format_dict({}, self.args.pretty)
 
         node_id = self.index[self.args.host]
 
@@ -296,7 +299,7 @@ class LinodeInventory(object):
         if private_ips:
             node_vars["private_ip"] = private_ips[0]
 
-        return self.json_format_dict(node_vars, True)
+        return self.json_format_dict(node_vars, self.args.pretty)
 
     def push(self, my_dict, key, element):
         """Pushed an element onto an array that may not have been defined in the dict."""
@@ -307,19 +310,17 @@ class LinodeInventory(object):
 
     def get_inventory_from_cache(self):
         """Reads the inventory from the cache file and returns it as a JSON object."""
-        cache = open(self.cache_path_cache, 'r')
-        json_inventory = cache.read()
-        return json_inventory
+        with open(self.cache_path_index, 'r') as cache:
+            return self.json_format_dict(cache.read(), self.args.pretty)
 
     def load_index_from_cache(self):
         """Reads the index from the cache file and sets self.index."""
-        cache = open(self.cache_path_index, 'r')
-        json_index = cache.read()
-        self.index = json.loads(json_index)
+        with open(self.cache_path_index, 'r') as cache:
+            self.index = self.json_format_dict(cache.read(), self.args.pretty)
 
     def write_to_cache(self, data, filename):
         """Writes data in JSON format to a file."""
-        json_data = self.json_format_dict(data, True)
+        json_data = self.json_format_dict(data, False)
         cache = open(filename, 'w')
         cache.write(json_data)
         cache.close()
